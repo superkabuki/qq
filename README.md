@@ -58,7 +58,7 @@
 ### Xml 
  
 ```xml
-    <AdBreakSignal qid='qq' signalType=0x0a breakStartsIn=5>
+    <AdBreakSignal qid='q' signalType=0x0a breakStartsIn=5>
         <Break uniqueSpliceId=0x000001 breakDuration=60/>
         <Break uniqueSpliceId=0x000002 breakDuration=30/>    
         <Break uniqueSpliceId=0x000003 breakDuration=127.50/>
