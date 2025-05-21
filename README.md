@@ -1,4 +1,4 @@
-# `__qq__`  is a replacement for SCTE-35 
+# `qq`  is a replacement for SCTE-35 
 
 * __Biggest__ change is no PTS in __qq__ data.
 * __qq__ PTS is determined by packet PTS,  
