@@ -1,20 +1,20 @@
 # quick35
 __quick35__ is a replacement for SCTE-35 
 
-* Biggest change is no PTS.
- 
+* __Biggest change is no PTS in __quick35__ data.
+* __quick35__ PTS is determined by packet PTS,  
 * SCTE-35 PTS is a big problem for a lot of people and it's unnecessary.
 * Everything is splice immediate with __quick35__.
-* __quick35__ PTS is determined by packet PTS, The __quick35__ packet is inserted at the splice point.
+* The __quick35__ packet is inserted at the splice point.
   * Even if the PTS changes, the packet is still at the splice point, no need to adjust it.
   * The same for HLS and DASH. 
 * People also struggle with bits, __SpliceSignal__ and __AdBreakSignal__ vars are in bytes.
 
 * For now, leave descriptors and upids as is, 
 
-* Replace info section and commands with SpliceSignal
+* Replace info section and commands with __SpliceSignal__
 
-* Add AdBreakSignal
+* Add __AdBreakSignal__
 
 * Sidecar files can be used or data can be embedded.
 
@@ -41,20 +41,20 @@ __quick35__ is a replacement for SCTE-35
 ```
 #    AdBreakSignal:
 
-    * table_id always 0xfc 1 byte
+   * __table_id__ always __0xfc__   __1 byte__
 
-    * signal_type always 0x1b indicates AdBreakSignal 1 byte
+   * __signal_type__ always __0x1b__ indicates AdBreakSignal __1 byte__
     
-    * adbreak_id  Unique id for this AdBreakSignal 2 bytes
+   * __adbreak_id__  Unique id for this AdBreakSignal __2 bytes__
     
-    * break_starts_in  The number of seconds until the ad break starts, 2 bytes
+   * __break_starts_in__  The number of seconds until the ad break starts, 2 bytes
        * this covers preroll. 5 means the ad break begins 5 seconds from now. 
        
-    * breaks unique_splice_id and duration of the individual ads. 6 bytes each  
+  * __breaks__ is a map of  __unique_splice_id__ and __brake_duration__ of the individual ads. __6 bytes each__  
     
-    * note 32 bytes of data and /or padding for private data.
+  * __note__ 32 bytes of data and /or padding for private data. __32 bytes__
  
-    * crc32 4 bytes
+  * __crc32__ __4 bytes__
  
 ### Xml 
  
@@ -93,20 +93,20 @@ __quick35__ is a replacement for SCTE-35
        
 * table_id always 0xfc 1 byte
 * signal_type always 0x0d indicates a SpliceSignal 1 byte
-* section_length: 2 bytes
-* sap_type 1 byte
-* cw_index 1 byte
-* tier 2 bytes
-* break duration is seconds 4 bytes 
+* __section_length__: __2 bytes__
+* __sap_type__ is __1 byte__
+* __cw_index__ is __1 byte__
+* __tier__ is  __2 bytes__
+* __break duration__ is in seconds __4 bytes__ 
              
 * __A break_duration greater than 0 means  out_of_network_indicator = True and duration flag = True__
 * __A break_duration  equal to zero means out_of_network_indicator = False and duration flag = False__
-* splice_id - Unique identifier for a specific SpliceSignal 2 bytes
-* compliance_flag  1 byte
-* descriptor_loop_length  2 bytes
-* note  private data  and/or padding 32 bytes
+* __splice_id__ - Unique identifier for a specific SpliceSignal __2 bytes__
+* __compliance_flag__ is  __1 byte__
+* __descriptor_loop_length__ is  __2 bytes__
+* __note__  private data  and/or padding __32 bytes__
 * Descriptors
-* crc32 4 bytes
+* __crc32__ is __4 bytes__
 
 ### Xml 
 ```xml
