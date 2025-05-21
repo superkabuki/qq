@@ -126,7 +126,8 @@
 
 ### RestrictdDescriptor
 
- #  *   delivery_not_restricted_flag is redundant    
+  *   delivery_not_restricted_flag is redundant
+    
  ```js
 {
 "type": 0xaa,     # 1 byte
