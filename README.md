@@ -1,10 +1,10 @@
-# `queue`  is a replacement for SCTE-35 
+# `qque`  is a replacement for SCTE-35 
 
-* __Biggest__ change is no PTS in __queue__  data.
-* __queue__ PTS is determined by packet PTS,  
+* __Biggest__ change is no PTS in __qque__  data.
+* __qque__ PTS is determined by packet PTS,  
 * SCTE-35 PTS is a big problem for a lot of people and it's unnecessary.
-* Everything is splice immediate with __queue__ .
-* The __queue__ packet is inserted at the splice point.
+* Everything is splice immediate with __qque__ .
+* The __qque__ packet is inserted at the splice point.
   * Even if the PTS changes, the packet is still at the splice point, no need to adjust it.
   * The same for HLS and DASH. 
 * People also struggle with bits, __SpliceSignal__ and __AdBreakSignal__ vars are in bytes.
