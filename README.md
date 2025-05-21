@@ -1,10 +1,10 @@
-# `qq`  is a replacement for SCTE-35 
+# `queue`  is a replacement for SCTE-35 
 
-* __Biggest__ change is no PTS in __qq__ data.
-* __qq__ PTS is determined by packet PTS,  
+* __Biggest__ change is no PTS in __queue__  data.
+* __queue__ PTS is determined by packet PTS,  
 * SCTE-35 PTS is a big problem for a lot of people and it's unnecessary.
-* Everything is splice immediate with __qq__.
-* The __qq__ packet is inserted at the splice point.
+* Everything is splice immediate with __queue__ .
+* The __queue__ packet is inserted at the splice point.
   * Even if the PTS changes, the packet is still at the splice point, no need to adjust it.
   * The same for HLS and DASH. 
 * People also struggle with bits, __SpliceSignal__ and __AdBreakSignal__ vars are in bytes.
@@ -23,11 +23,11 @@
 
 ### How to detect: 
 
-* first three bytes of payload are __b'qq\x1b'__
+* first two bytes of payload are __b'q\x1b'__
   
 ```js
  "AdBreakSignal"{
-    "qid": 'qq', 
+    "qid": 'q', 
     "signal_type" :0x1b, 
     "adbreak_id: 0x39, 
     "break_starts_in" = 5,  
@@ -40,7 +40,7 @@
 ```
 #    AdBreakSignal:
 
-   * __qid__ always __b'qq'__ always  __1 byte__
+   * __qid__ always __b'q'__ always  __1 byte__
 
    * __signal_type__ always __0x0a__ indicates AdBreakSignal __1 byte__
     
@@ -70,11 +70,11 @@
 
 ###  How to detect: 
 
-* first three bytes of payload are __b'qq\x0b'__
+* first two bytes of payload are __b'q\x0b'__
 
 ```js
 "SpliceSignal": {
-        "qid": "qq", # 2 bytes
+        "qid": "q", # 1 byte
         "signal_type: 0x0b,  #1 byte
         "section_length: 72, # 2 bytes
         "sap_type": "0x03",    # 1 byte
@@ -90,7 +90,7 @@
 ```
 #### SpliceSignal is ALWAYS splice immediate.
        
-* qid always __b'qq'__ always  __2 bytes__ 
+* qid always __b'q'__ always  __1 byte__ 
 * __signal_type__ always __0x0b__ indicates a __SpliceSignal__ always __1 byte__
 * __section_length__: __2 bytes__
 * __sap_type__ is __1 byte__
@@ -109,7 +109,7 @@
 
 ### Xml 
 ```xml
-    <SpliceSignal qid='qq' sap_type= 0x03 cwIndex= 0x00 tier= 0x0fff ComplianceFlag= "true">
+    <SpliceSignal qid='q' sap_type= 0x03 cwIndex= 0x00 tier= 0x0fff ComplianceFlag= "true">
         <UniqueSpliceId> 0x0001</UniqueSpliceId>
         <BreakDuration>119.23</BreakDuration> 
         <Note>"A Note"</Note>
