@@ -124,9 +124,10 @@
 
 # Descriptors
 
-RestrictdDescriptor
+### RestrictdDescriptor
 
  #  *   delivery_not_restricted_flag is redundant    
+ ```js
 {
 "type": 0xaa,     # 1 byte
 "length" 37, # 1byte
@@ -135,8 +136,9 @@ RestrictdDescriptor
 "archive_allowed_flag" :  True # 1 byte
 device_restrictions : 0x02    # 1 byte
 }
-
-SegmentDescriptor
+```
+### SegmentDescriptor
+```js
 {
      type 0xbb, #1 byte
      length 29, 1 byte
@@ -148,3 +150,4 @@ SegmentDescriptor
      segment_upid : b'I am the upid damn it!' # variable length bytes
 }
 
+```
