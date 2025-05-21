@@ -1,7 +1,7 @@
 # quick35
 __quick35__ is a replacement for SCTE-35 
 
-* __Biggest change is no PTS in __quick35__ data.
+* __Biggest__ change is no PTS in __quick35__ data.
 * __quick35__ PTS is determined by packet PTS,  
 * SCTE-35 PTS is a big problem for a lot of people and it's unnecessary.
 * Everything is splice immediate with __quick35__.
