@@ -1,16 +1,16 @@
-# quick35
-__quick35__ is a replacement for SCTE-35 
+# qq
+__qq__ is a replacement for SCTE-35 
 
-* __Biggest__ change is no PTS in __quick35__ data.
-* __quick35__ PTS is determined by packet PTS,  
+* __Biggest__ change is no PTS in __qq__ data.
+* __qq__ PTS is determined by packet PTS,  
 * SCTE-35 PTS is a big problem for a lot of people and it's unnecessary.
-* Everything is splice immediate with __quick35__.
-* The __quick35__ packet is inserted at the splice point.
+* Everything is splice immediate with __qq__.
+* The __qq__ packet is inserted at the splice point.
   * Even if the PTS changes, the packet is still at the splice point, no need to adjust it.
   * The same for HLS and DASH. 
 * People also struggle with bits, __SpliceSignal__ and __AdBreakSignal__ vars are in bytes.
 
-* For now, leave descriptors and upids as is, 
+* For now, leave upids as is, 
 
 * Replace info section and commands with __SpliceSignal__
 
@@ -24,11 +24,11 @@ __quick35__ is a replacement for SCTE-35
 
 ### How to detect: 
 
-* first two bytes of payload are __b'\xfc\x1b'__
+* first three bytes of payload are __b'qq\x1b'__
   
 ```js
  "AdBreakSignal"{
-    "table_id": 0xfc, 
+    "qid": 'qq', 
     "signal_type" :0x1b, 
     "adbreak_id: 0x39, 
     "break_starts_in" = 5,  
@@ -41,9 +41,9 @@ __quick35__ is a replacement for SCTE-35
 ```
 #    AdBreakSignal:
 
-   * __table_id__ always __0xfc__   __1 byte__
+   * __qid__ always __b'qq'__ always  __1 byte__
 
-   * __signal_type__ always __0x1b__ indicates AdBreakSignal __1 byte__
+   * __signal_type__ always __0x0a__ indicates AdBreakSignal __1 byte__
     
    * __adbreak_id__  Unique id for this AdBreakSignal __2 bytes__
     
@@ -59,7 +59,7 @@ __quick35__ is a replacement for SCTE-35
 ### Xml 
  
 ```xml
-    <AdBreakSignal tableId=0xfc signalType=0x1b breakStartsIn=5>
+    <AdBreakSignal qid='qq' signalType=0x0a breakStartsIn=5>
         <Break uniqueSpliceId=0x000001 breakDuration=60/>
         <Break uniqueSpliceId=0x000002 breakDuration=30/>    
         <Break uniqueSpliceId=0x000003 breakDuration=127.50/>
@@ -71,12 +71,12 @@ __quick35__ is a replacement for SCTE-35
 
 ###  How to detect: 
 
-* first two bytes of payload are __b'\xfc\x0d'__
+* first three bytes of payload are __b'qq\x0b'__
 
 ```js
 "SpliceSignal": {
-        "table_id": "0xfc", # 1 byte
-        "signal_type: 0x0d,  #1 byte
+        "qid": "qq", # 2 bytes
+        "signal_type: 0x0b,  #1 byte
         "section_length: 72, # 2 bytes
         "sap_type": "0x03",    # 1 byte
         "cw_index": "0x00", # 1 byte       What does this even mean?
@@ -91,8 +91,8 @@ __quick35__ is a replacement for SCTE-35
 ```
 #### SpliceSignal is ALWAYS splice immediate.
        
-* table_id always 0xfc 1 byte
-* signal_type always 0x0d indicates a SpliceSignal 1 byte
+* qid always __b'qq'__ always  __2 bytes__ 
+* __signal_type__ always __0x0b__ indicates a __SpliceSignal__ always __1 byte__
 * __section_length__: __2 bytes__
 * __sap_type__ is __1 byte__
 * __cw_index__ is __1 byte__
@@ -110,7 +110,7 @@ __quick35__ is a replacement for SCTE-35
 
 ### Xml 
 ```xml
-    <SpliceSignal sap_type= 0x03 cwIndex= 0x00 tier= 0x0fff ComplianceFlag= "true">
+    <SpliceSignal qid='qq' sap_type= 0x03 cwIndex= 0x00 tier= 0x0fff ComplianceFlag= "true">
         <UniqueSpliceId> 0x0001</UniqueSpliceId>
         <BreakDuration>119.23</BreakDuration> 
         <Note>"A Note"</Note>
@@ -120,3 +120,32 @@ __quick35__ is a replacement for SCTE-35
         <AvailDescriptor providerAvailId="15"/>
    </SpliceSignal>
 ```
+
+
+
+# Descriptors
+
+RestrictdDescriptor
+
+ #  *   delivery_not_restricted_flag is redundant    
+{
+"type": 0xaa,     # 1 byte
+"length" 37, # 1byte
+"web_delivery_allowed_flag" : True # 1 byte
+"no_regional_blackout_flag" : True  # 1 byte
+"archive_allowed_flag" :  True # 1 byte
+device_restrictions : 0x02    # 1 byte
+}
+
+SegmentDescriptor
+{
+     type 0xbb, #1 byte
+     length 29, 1 byte
+     segment_type_message: " breakin'"   # from a table by segment_type_id
+     segment_type_id = 0x33,       # 1 byte
+     segment_upid_length: 19,      # 1 byte
+     segment_upid_type = 0x05,     # 1byte
+     segment_upid_type_name ="AirId"    # from a table by segment_upid_type
+     segment_upid : b'I am the upid damn it!' # variable length bytes
+}
+
