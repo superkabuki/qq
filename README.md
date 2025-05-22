@@ -23,12 +23,12 @@
 
 ### How to detect: 
 
-* first two bytes of payload are __b'q\x1b'__
+* first two bytes of payload are __b'q\x0a'__
   
 ```js
  "AdBreakSignal"{
     "qid": 'q', 
-    "signal_type" :0x1b, 
+    "signal_type" :0x0a, 
     "adbreak_id: 0x39, 
     "break_starts_in" = 5,  
     "breaks" = {0x00001: 60.00, 
