@@ -122,8 +122,7 @@ b'qque'+ b'\x0a+b'\x009'+ b'\x00\x06\xdd\xd0'
         "tier": "0x0fff",  # 2 bytes
         "break_duration": 10730700   # 4 bytes # 
         "compliance_flag": True, # 1 byte
-        "descriptor_loop_length": 26,#  2 bytes
-        "crc32": "0xa6ac3c8d"   # 4 bytes
+        <s>"descriptor_loop_length": 26,#  2 bytes</s> # Descriptor loop length is not needed
     }
 ```
 #### SpliceSignal is ALWAYS splice immediate.
@@ -140,9 +139,7 @@ b'qque'+ b'\x0a+b'\x009'+ b'\x00\x06\xdd\xd0'
    * __A break_duration  equal to zero means out_of_network_indicator = False and duration flag = False__
 
 * __compliance_flag__ is  __1 byte__
-* __descriptor_loop_length__ is  __2 bytes__
-* Descriptors
-* __crc32__ is __4 bytes__
+
 
 ### Xml 
 ```xml
