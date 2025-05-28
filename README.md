@@ -31,58 +31,27 @@
 
 ### How to detect: 
 
-* first five bytes of payload are __b'qque\x0a'__
+* first five bytes of payload are __b'qqa'__
   
 ```js
  "AdBreakSignal"{
-    "startmark": 'qque',   b'qque'
-    "signal_type" :0x62,   b'b'
+    "startmark": 'qque',   b'qq'
+    "signal_type" :0x62,   b'a'
     "qid: 0x39,           b'\x009'
+
     "break_starts_in" = 450000,  b'\x00\x06\xdd\xd0'
 
     "breaks" = {0x41: 5400000,    b'\x00A':b'\x00Re\xc0'
                 0x42:2800000,     b'\x00B':b'\x00*\xb9\x80'
                 0x43 : 11475000,   b'\x00C':b'\x00\xaf\x188'
 } 
-```
-* To encode put it all together
-```js
-b'qqueb\x009\x00\x06\xdd\xd0\x00A\x00Re\xc0\x00B\x00*\xb9\x80\x00C\x00\xaf\x188'
-```
-* decode
-```py3
->>>> startmark =qque[0:4]
->>>> signal_type=hex(qque[4])
-qid = hex(int.from_bytes(qque[5:7], byteorder="big"))
->>>> bsn=qque[7:11]
->>>> break_start_in=int.from_bytes(bsn,byteorder="big")
->>>> idx=11
->>>> breaks={}
->>>> end =len(qque)
->>>> while idx < end
-....     qid= qque[idx:idx+2]
-....     idx+=2
-....     dur=qque[idx:idx+4]
-....     duration=int.from_bytes(dur,byteorder="big")
-....     idx +=4
-....     breaks[qid]= duration
->>>> print("\nstartmark ", startmark, "\nsignal_type ",signal_type,"\nq\
-id ", qid, '\nbreak_start_in ', break_start_in, '\nbreaks', breaks)
-
-startmark  b'qque' 
-signal_type  0x62 
-qid  0x39
-break_start_in  450000 
-breaks {b'\x00A': 5400000, b'\x00B': 2800000, b'\x00C': 11475000}
->>>> 
-```
 
 ``
 #    AdBreakSignal:
 
-   * __startmark__ always __b'qque'__ always  __4 bytes__
+   * __startmark__ always __b'qq'__ always  __4 bytes__
 
-   * __signal_type__ always __0x0a__ indicates AdBreakSignal __1 byte__
+   * __signal_type__ always __b'a'__ indicates AdBreakSignal __1 byte__
     
    * __qid__  qque id for this Signal __2 bytes__
     
@@ -90,26 +59,14 @@ breaks {b'\x00A': 5400000, b'\x00B': 2800000, b'\x00C': 11475000}
        * this covers preroll. 450000 / 90000 = 5 seconds from now. 
        
   * __breaks__ is a map of  __qid__ and __brake_duration__ of the individual ads. __6 bytes each__  
-     
 
-b'qque'+ b'\x0a+b'\x009'+ b'\x00\x06\xdd\xd0'
 
- 
-### Xml 
- 
-```xml
-    <AdBreakSignal qid= 0x39 breakStartsIn=450000>
-        <Break qid=0x40 breakDuration=540000/>
-        <Break qid=0x41 breakDuration=280000/>    
-        <Break qid=0x42 breakDuration=11475000/>
-    </AdBreakSignal>
-```
 
 # SpliceSignal.
 
 ###  How to detect: 
 
-* first five bytes of payload are __b'qque\x0b'__
+* first three bytes of payload are __b'qqs'__
 
 ```js
 "SpliceSignal": {
