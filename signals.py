@@ -1,5 +1,5 @@
 """
-Signals
+Signals   05/28/2025
 
     Signal,
         AdBreakSignal
@@ -8,7 +8,36 @@ Signals
 
 """
 
+from collections import deque
+
 NTK = 90000
+
+qq_map = {
+    b"a": AdBreakSignal,
+    b"s": SpliceSignal,
+    b"t": ABTSignal,
+    b"r": RestrictDescriptor,
+    b"d": SegmentDescriptor,
+}
+
+
+def qqheader(data):
+    """
+    qqheader finds the first qq object in data,
+    initializes it based on the header, and then returns
+    a tuple of the object and  the remaining data
+    """
+    startmark = b"qq"
+    head_size = 7
+    start = data.find(startmark)
+    signal_type = data[start + 2]
+    qid = data[start + 3 : start + 5]
+    data_length = data[start + 5 : start + 7]
+    end = data_length + head_size
+    obj_data = data[start:end]
+    obj = qq_map[signal_type](obj_data)
+    leftover = data[end:]
+    return obj, leftover
 
 
 class Signal:
@@ -16,30 +45,37 @@ class Signal:
     Signal is the base class for AdBreakSignal, SpliceSignal and ABTSignal.
     """
 
-    def __init__(self):
-        self.startmark = None
-        self.signal_type = None
-        self.qid = None
+    def __init__(self, data=None):
+        self.startmark = "qq"
+        self.data = data
+        self.signal_type = None  # 1 byte
+        self.qid = None  # 2 bytes
+        self.data_length = None  # 2 bytes
 
-    def decode(self, bites):
+    def decode_head(self):
         """
         decode bytes into Signal vars.
         """
-        self.startmark = bites[0:4]
-        self.signal_type = hex(bites[4])
-        self.qid = self.hex(bites[5:7])
+        self.startmark = self.data[0:2]
+        self.signal_type = self.data[2]
+        self.qid = self.hex(self.data[3:5])
+        self.data_length = self.int(self.data[5:7])
 
-    def encode(self):
+    def decode(self):
+        self.decode_head()
+
+    def encode_head(self):
         """
         encode bytes into  Signal vars.
         """
-        qq = b"qque"
-        qq += self.int2bytes(self.signal_type, 1)
-        if self.qid:
-            qq += self.hex2bytes(self.qid, 2)
-            return qq
-        print("qid required")
-        return False
+        qq = b"qq"
+        qq += self.signal_type
+        qq += self.hex2bytes(self.qid, 2)
+        qq += self.int2bytes(self.data_length, 2)
+        self.header = qq
+
+    def encode(self):
+        self.encode_head()
 
     def hex(self, bites):
         """
@@ -82,6 +118,28 @@ class Signal:
         return int(seconds * NTK).to_bytes(length=howmany, byteorder="big")
 
 
+class AdBreakSignal(Signal):
+    """
+    AdBreakSinal class
+    """
+
+    def __init__(self, data=None):
+        self.signal_type = b"a"
+        super().__init__(data)
+        self.break_starts_in = 0  # ticks until adbreak start
+        self.splice_points = deque()  # splice signals included in adbreak
+        self.data = data
+
+    def decode(self):
+        super().decode(self.data)
+        self.break_starts_in = self.seconds(self.data[7:11])
+        data = self.data[11:]
+        while data:
+            splice_point, data = qqheader()
+            splice_point.decode()
+            self.splicepoints.append(splice_point)
+
+
 class ABTSignal(Signal):
     """
     ABTSignal AdBreak Terminate Signal
@@ -92,16 +150,18 @@ class ABTSignal(Signal):
         a value of 0 indicates immediate terminate.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, data=None):
+        self.signal_type = b"t"
+        super().__init__(data)
         self.break_stops_in = 0
+        self.data = b""
 
-    def decode(self, bites):
+    def decode(self):
         """
         decode bytes into ABTSignal vars.
         """
-        super().decode(bites)
-        self.break_stops_in = self.seconds(bites[7:11])
+        super().decode(self.data)
+        self.break_stops_in = self.seconds(self.data[7:11])
 
     def encode(self):
         """
@@ -109,7 +169,8 @@ class ABTSignal(Signal):
         """
         qqbase = super().encode()
         qq = self.seconds2bytes(self.break_stops_in, 4)
-        return qqbase + qq
+        self.data = qqbase + qq
+        return self.data
 
 
 class SpliceSignal(Signal):
@@ -117,43 +178,36 @@ class SpliceSignal(Signal):
     SpliceSignal Class
     """
 
-    def __init__(self):
-        super().__init__()
-        self.section_length = 0
+    def __init__(self, data=None):
+        self.signal_type = b"s"
+        super().__init__(data)
         self.sap_type = None
         self.cw_index = None
         self.tier = None
         self.break_duration = 0
         self.compliance_flag = None
         self.descriptors = []
+        self.data = data
 
-    def decode(self, bites):
+    def decode(self):
         """
         decode bytes into SpliceSignal vars.
         """
-        super().decode(bites)
-        self.section_length = self.int(bites[7:9])
-        self.sap_type = self.hex(bites[9])
-        self.cw_index = self.hex(bites[10])
-        self.tier = self.hex(bites[11:13])
-        self.break_duration = self.seconds(bites[13:17])
-        self.compliance_flag = bites[17]
-        # we don't need length, pass anything left to unroll_descriptors()
-        self.unroll_descriptors(bites[18:])
+        super().decode()
+        self.sap_type = self.hex(self.data[7])
+        self.cw_index = self.hex(self.data[8])
+        self.tier = self.hex(self.data[9:11])
+        self.break_duration = self.seconds(self.data[11:15])
+        self.compliance_flag = self.data[15]
+        # pass anything left to unroll_descriptors()
+        self.unroll_descriptors(self.data[16:])
 
-    def unroll_descriptors(self, bites):
+    def unroll_descriptors(self, data):
         """
         unroll_descriptors decode descriptors from bites
         """
-        idx = 0
-        bytelen = len(bites)
-        while idx < bytelen:
-            dtype = bites[idx]
-            dlength = bites[idx + 1]
-            idx += 2
-            dbytes = bites[idx : idx + dlength]
-            idx += dlength
-            descriptor = descriptor_map[dtype](dbytes)
+        while data:
+            descriptor, data = qqheader(data)
             descriptor.decode()
             self.descriptors.append(descriptor)
 
@@ -175,4 +229,4 @@ class SpliceSignal(Signal):
         qq += self.seconds2bytes(self.break_duration, 4)
         qq += self.int2bytes(self.compliance_flag, 1)
         qq += self.roll_descriptors()
-        return qqbase + self.int2bytes(self.section_length, 2) + qq
+        self.data = qqbase + self.int2bytes(self.section_length, 2) + qq
