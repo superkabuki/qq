@@ -30,12 +30,12 @@ def qqheader(data):
     startmark = b"qq"
     head_size = 7
     start = data.find(startmark)
-    signal_type = data[start + 2]
-    qid = data[start + 3 : start + 5]
+    qqtype = data[start + 2]
+    qqid = data[start + 3 : start + 5]
     data_length = data[start + 5 : start + 7]
     end = data_length + head_size
     obj_data = data[start:end]
-    obj = qq_map[signal_type](obj_data)
+    obj = qq_map[qqtype](obj_data)
     leftover = data[end:]
     return obj, leftover
 
@@ -48,7 +48,7 @@ class Signal:
     def __init__(self, data=None):
         self.startmark = "qq"
         self.data = data
-        self.signal_type = None  # 1 byte
+        self.qqtype = None  # 1 byte
         self.qid = None  # 2 bytes
         self.data_length = None  # 2 bytes
 
@@ -57,8 +57,8 @@ class Signal:
         decode bytes into Signal vars.
         """
         self.startmark = self.data[0:2]
-        self.signal_type = self.data[2]
-        self.qid = self.hex(self.data[3:5])
+        self.qqtype = self.data[2]
+        self.qqid = self.hex(self.data[3:5])
         self.data_length = self.int(self.data[5:7])
 
     def decode(self):
@@ -69,13 +69,13 @@ class Signal:
         encode bytes into  Signal vars.
         """
         qq = b"qq"
-        qq += self.signal_type
-        qq += self.hex2bytes(self.qid, 2)
+        qq += self.qqtype
+        qq += self.hex2bytes(self.qqid, 2)
         qq += self.int2bytes(self.data_length, 2)
-        self.header = qq
+        return  qq
 
     def encode(self):
-        self.encode_head()
+        return self.encode_head()
 
     def hex(self, bites):
         """
@@ -124,8 +124,8 @@ class AdBreakSignal(Signal):
     """
 
     def __init__(self, data=None):
-        self.signal_type = b"a"
         super().__init__(data)
+        self.qqtype = b"a"
         self.break_starts_in = 0  # ticks until adbreak start
         self.splice_points = deque()  # splice signals included in adbreak
         self.data = data
@@ -151,8 +151,8 @@ class ABTSignal(Signal):
     """
 
     def __init__(self, data=None):
-        self.signal_type = b"t"
         super().__init__(data)
+        self.qqtype = b"t"
         self.break_stops_in = 0
         self.data = b""
 
@@ -179,13 +179,11 @@ class SpliceSignal(Signal):
     """
 
     def __init__(self, data=None):
-        self.signal_type = b"s"
         super().__init__(data)
+        self.qqtype = b"s"
         self.sap_type = None
-        self.cw_index = None
         self.tier = None
         self.break_duration = 0
-        self.compliance_flag = None
         self.descriptors = []
         self.data = data
 
@@ -195,12 +193,10 @@ class SpliceSignal(Signal):
         """
         super().decode()
         self.sap_type = self.hex(self.data[7])
-        self.cw_index = self.hex(self.data[8])
-        self.tier = self.hex(self.data[9:11])
-        self.break_duration = self.seconds(self.data[11:15])
-        self.compliance_flag = self.data[15]
+        self.tier = self.hex(self.data[8:10])
+        self.break_duration = self.seconds(self.data[10:14])
         # pass anything left to unroll_descriptors()
-        self.unroll_descriptors(self.data[16:])
+        self.unroll_descriptors(self.data[14:])
 
     def unroll_descriptors(self, data):
         """
@@ -224,9 +220,40 @@ class SpliceSignal(Signal):
         """
         qqbase = super().encode()
         qq = self.hex2bytes(self.sap_type, 1)
-        qq += self.hex2bytes(self.cw_index, 1)
         qq += self.hex2bytes(self.tier, 1)
         qq += self.seconds2bytes(self.break_duration, 4)
-        qq += self.int2bytes(self.compliance_flag, 1)
         qq += self.roll_descriptors()
         self.data = qqbase + self.int2bytes(self.section_length, 2) + qq
+
+
+class RestrictDescriptor(Signal):
+
+    def __init__(self,data=None):
+        super().__init__(data)
+        self.data = data
+        self.qqtype=b'r'
+        self.web_delivery_allowed_flag=None  # 1 bit
+        self.no_regional_blackout_flag= None # 1 bit 
+        self.archive_allowed_flag= None# 1 bit
+        self.device_restrictions = None    # 2 bits
+
+    def decode(self):
+        magic_byte =self.data[8] # top 3 bits are 0
+        self.web_delivery_allowed_flag= magic_byte & 16
+        self.no_regional_blackout_flag= magic_byte & 8
+        self.archive_allowed_flag= magic_byte & 4
+        self.device_restrictions= magic_byte & 3
+        
+    def encode():
+        qq= super().encode()
+        magic_byte=0
+        magic_byte +=self.web_delivery_allowed_flag & 16
+        magic_byte +=self.no_regional_blackout_flag & 8
+        magic_byte +=self.archive_allowed_flag & 4
+        magic_byte +=self.device_restrictions & 3
+        qq+=bytes([magic_byte])
+        self.data = qq
+
+
+
+        
