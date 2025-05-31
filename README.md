@@ -1,4 +1,5 @@
 # `qque`  is a shorthand SCTE-35 
+## This is not functioning yet, I'm still working out the details. 05/30/2025
 
 * __No PTS__ hardcoded in  __qque__  Signals.
   * __SCTE-35 PTS is a big problem__ for a lot of people and __it's unnecessary__.
