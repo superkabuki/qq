@@ -6,6 +6,12 @@ Signals   05/30/2025
         SpliceSignal
         ABTSignal
         RestrictDescriptor
+
+ note on vars:
+        *   A number that will be used in any kind of math, will be an integer or float.
+        *   If a  number is used as identification it is displayed in hex with the leading '0x'.
+        *   Time values are stored as ticks and displayed as float rounded to 6 decimal places.
+
 """
 
 from collections import deque
@@ -33,7 +39,7 @@ class Signal:
         decode bytes into Signal vars.
         """
         self.startmark = self.data[0:2]
-        self.qq_type = self.data[2]
+        self.qq_type = self.data[2:3]
         self.qqid = self.hex(self.data[3:5])
         self.data_length = self.int(self.data[5:7])
 
@@ -103,7 +109,7 @@ class AdBreakSignal(Signal):
         super().__init__(data)
         self.qq_type = b"ab"
         self.break_starts_in = 0  # ticks until adbreak start
-        self.splice_points = deque()  # splice signals included in adbreak
+        self.splice_points = []  # splice signals included in adbreak
         self.data = data
 
     def decode(self):
@@ -114,6 +120,13 @@ class AdBreakSignal(Signal):
             splice_point, data = qqheader()
             splice_point.decode()
             self.splicepoints.append(splice_point)
+
+    def encode(self):
+        qq = self.seconds2bytes(self.break_starts_in, 4)
+        self.data_length= len(qq)
+        qqbase = super().encode()
+        self.data = qqbase + qq
+        return self.data
 
 
 class ABTSignal(Signal):
@@ -202,7 +215,7 @@ class SpliceSignal(Signal):
         self.data_length= len(qq)
         qqbase = super().encode()
         self.data = qqbase  + qq
-
+        return self.data
 
 class RestrictDescriptor(Signal):
 
@@ -211,7 +224,7 @@ class RestrictDescriptor(Signal):
         self.data = data
         self.qq_type=b'\xad'
         self.web_delivery_allowed_flag=None  # 1 bit
-        self.no_regional_blackout_flag= None # 1 bit 
+        self.no_regional_blackout_flag= None # 1 bit
         self.archive_allowed_flag= None# 1 bit
         self.device_restrictions = None    # 2 bits
 
@@ -220,17 +233,18 @@ class RestrictDescriptor(Signal):
         self.web_delivery_allowed_flag= bool((magic_byte & 16) >>4)
         self.no_regional_blackout_flag= bool( (magic_byte & 8) >> 3)
         self.archive_allowed_flag= bool((magic_byte & 4 )>> 2)
-        self.device_restrictions= magic_byte & 3
-        
+        self.device_restrictions= hex(magic_byte & 3)
+
     def encode(self):
         magic_byte=0
-        magic_byte +=int(self.web_delivery_allowed_flag) <<4  & 16
-        magic_byte +=self.no_regional_blackout_flag <<3  & 8
-        magic_byte +=self.archive_allowed_flag <<2 & 4
-        magic_byte +=self.device_restrictions & 3
+        magic_byte +=int(self.web_delivery_allowed_flag) << 4  & 16
+        magic_byte +=int(self.no_regional_blackout_flag) << 3  & 8
+        magic_byte +=int(self.archive_allowed_flag) << 2 & 4
+        magic_byte +=int(self.device_restrictions,base=16) & 3
         self.data_length=1
         qq= super().encode()
         self.data=qq+bytes([magic_byte])
+        return self.data
 
 
 
@@ -253,9 +267,9 @@ def qqheader(data):
     startmark = b"qq"
     head_size = 7
     start = data.find(startmark)
-    qq_type = data[start + 2]
-    qqid = data[start + 3 : start + 5]
-    data_length = data[start + 5 : start + 7]
+    qq_type = data[start + 2:start+3]
+    qqid = hex(int.from_bytes(data[start + 3 : start + 5], byteorder="big"))
+    data_length = int.from_bytes(data[start + 5 : start + 7], byteorder="big")
     end = data_length + head_size
     obj_data = data[start:end]
     obj = qq_map[qq_type](obj_data)
