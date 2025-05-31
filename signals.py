@@ -1,43 +1,16 @@
 """
-Signals   05/28/2025
+Signals   05/30/2025
 
     Signal,
         AdBreakSignal
         SpliceSignal
         ABTSignal
-
+        RestrictDescriptor
 """
 
 from collections import deque
 
 NTK = 90000
-
-qq_map = {
-    b"a": AdBreakSignal,
-    b"s": SpliceSignal,
-    b"t": ABTSignal,
-    b"r": RestrictDescriptor,
-    b"d": SegmentDescriptor,
-}
-
-
-def qqheader(data):
-    """
-    qqheader finds the first qq object in data,
-    initializes it based on the header, and then returns
-    a tuple of the object and  the remaining data
-    """
-    startmark = b"qq"
-    head_size = 7
-    start = data.find(startmark)
-    qqtype = data[start + 2]
-    qqid = data[start + 3 : start + 5]
-    data_length = data[start + 5 : start + 7]
-    end = data_length + head_size
-    obj_data = data[start:end]
-    obj = qq_map[qqtype](obj_data)
-    leftover = data[end:]
-    return obj, leftover
 
 
 class Signal:
@@ -48,16 +21,19 @@ class Signal:
     def __init__(self, data=None):
         self.startmark = "qq"
         self.data = data
-        self.qqtype = None  # 1 byte
-        self.qid = None  # 2 bytes
+        self.qq_type = None  # 1 byte
+        self.qqid = None  # 2 bytes
         self.data_length = None  # 2 bytes
+
+    def __repr__(self):
+        return str(vars(self))
 
     def decode_head(self):
         """
         decode bytes into Signal vars.
         """
         self.startmark = self.data[0:2]
-        self.qqtype = self.data[2]
+        self.qq_type = self.data[2]
         self.qqid = self.hex(self.data[3:5])
         self.data_length = self.int(self.data[5:7])
 
@@ -69,7 +45,7 @@ class Signal:
         encode bytes into  Signal vars.
         """
         qq = b"qq"
-        qq += self.qqtype
+        qq += self.qq_type
         qq += self.hex2bytes(self.qqid, 2)
         qq += self.int2bytes(self.data_length, 2)
         return  qq
@@ -125,7 +101,7 @@ class AdBreakSignal(Signal):
 
     def __init__(self, data=None):
         super().__init__(data)
-        self.qqtype = b"a"
+        self.qq_type = b"ab"
         self.break_starts_in = 0  # ticks until adbreak start
         self.splice_points = deque()  # splice signals included in adbreak
         self.data = data
@@ -152,7 +128,7 @@ class ABTSignal(Signal):
 
     def __init__(self, data=None):
         super().__init__(data)
-        self.qqtype = b"t"
+        self.qq_type = b"\xae"
         self.break_stops_in = 0
         self.data = b""
 
@@ -167,8 +143,9 @@ class ABTSignal(Signal):
         """
         encode  ABTSignal vars into bytes
         """
-        qqbase = super().encode()
         qq = self.seconds2bytes(self.break_stops_in, 4)
+        self.data_length= len(qq)
+        qqbase = super().encode()
         self.data = qqbase + qq
         return self.data
 
@@ -180,7 +157,7 @@ class SpliceSignal(Signal):
 
     def __init__(self, data=None):
         super().__init__(data)
-        self.qqtype = b"s"
+        self.qq_type = b"\xac"
         self.sap_type = None
         self.tier = None
         self.break_duration = 0
@@ -192,7 +169,7 @@ class SpliceSignal(Signal):
         decode bytes into SpliceSignal vars.
         """
         super().decode()
-        self.sap_type = self.hex(self.data[7])
+        self.sap_type = hex(self.data[7])
         self.tier = self.hex(self.data[8:10])
         self.break_duration = self.seconds(self.data[10:14])
         # pass anything left to unroll_descriptors()
@@ -218,12 +195,13 @@ class SpliceSignal(Signal):
         """
         encode SpliceSignal vars into bytes.
         """
-        qqbase = super().encode()
         qq = self.hex2bytes(self.sap_type, 1)
-        qq += self.hex2bytes(self.tier, 1)
+        qq += self.hex2bytes(self.tier, 2)
         qq += self.seconds2bytes(self.break_duration, 4)
         qq += self.roll_descriptors()
-        self.data = qqbase + self.int2bytes(self.section_length, 2) + qq
+        self.data_length= len(qq)
+        qqbase = super().encode()
+        self.data = qqbase  + qq
 
 
 class RestrictDescriptor(Signal):
@@ -231,29 +209,55 @@ class RestrictDescriptor(Signal):
     def __init__(self,data=None):
         super().__init__(data)
         self.data = data
-        self.qqtype=b'r'
+        self.qq_type=b'\xad'
         self.web_delivery_allowed_flag=None  # 1 bit
         self.no_regional_blackout_flag= None # 1 bit 
         self.archive_allowed_flag= None# 1 bit
         self.device_restrictions = None    # 2 bits
 
     def decode(self):
-        magic_byte =self.data[8] # top 3 bits are 0
-        self.web_delivery_allowed_flag= magic_byte & 16
-        self.no_regional_blackout_flag= magic_byte & 8
-        self.archive_allowed_flag= magic_byte & 4
+        magic_byte =self.data[7] # top 3 bits are 0
+        self.web_delivery_allowed_flag= bool((magic_byte & 16) >>4)
+        self.no_regional_blackout_flag= bool( (magic_byte & 8) >> 3)
+        self.archive_allowed_flag= bool((magic_byte & 4 )>> 2)
         self.device_restrictions= magic_byte & 3
         
-    def encode():
-        qq= super().encode()
+    def encode(self):
         magic_byte=0
-        magic_byte +=self.web_delivery_allowed_flag & 16
-        magic_byte +=self.no_regional_blackout_flag & 8
-        magic_byte +=self.archive_allowed_flag & 4
+        magic_byte +=int(self.web_delivery_allowed_flag) <<4  & 16
+        magic_byte +=self.no_regional_blackout_flag <<3  & 8
+        magic_byte +=self.archive_allowed_flag <<2 & 4
         magic_byte +=self.device_restrictions & 3
-        qq+=bytes([magic_byte])
-        self.data = qq
+        self.data_length=1
+        qq= super().encode()
+        self.data=qq+bytes([magic_byte])
 
 
 
-        
+
+
+qq_map = {
+    b"\xab": AdBreakSignal,
+    b"\xac": SpliceSignal,
+    b"\xad": RestrictDescriptor,
+    b"\xae": ABTSignal,
+}
+
+
+def qqheader(data):
+    """
+    qqheader finds the first qq object in data,
+    initializes it based on the header, and then returns
+    a tuple of the object and  the remaining data
+    """
+    startmark = b"qq"
+    head_size = 7
+    start = data.find(startmark)
+    qq_type = data[start + 2]
+    qqid = data[start + 3 : start + 5]
+    data_length = data[start + 5 : start + 7]
+    end = data_length + head_size
+    obj_data = data[start:end]
+    obj = qq_map[qq_type](obj_data)
+    leftover = data[end:]
+    return obj, leftover
