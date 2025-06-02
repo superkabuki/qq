@@ -70,7 +70,11 @@ class Signal:
         """
         int return bites as an integer
         """
-        return int.from_bytes(bites, byteorder="big")
+        lb= list(bites)
+        lb.reverse()
+        return sum([b << (a<<3) for a,b in enumerate(lb)])
+        
+     #   return int.from_bytes(bites, byteorder="big")
 
     def seconds(self, bites):
         """
@@ -108,22 +112,25 @@ class AdBreakSignal(Signal):
     def __init__(self, data=None):
         super().__init__(data)
         self.qq_type = b"ab"
-        self.break_starts_in = 0  # ticks until adbreak start
+        self.break_starts_in = 5  # ticks until adbreak start
         self.splice_points = []  # splice signals included in adbreak
         self.data = data
 
     def decode(self):
-        super().decode(self.data)
+        super().decode()
         self.break_starts_in = self.seconds(self.data[7:11])
         data = self.data[11:]
         while data:
-            splice_point, data = qqheader()
+            splice_point, data = qqheader(data)
             splice_point.decode()
             self.splicepoints.append(splice_point)
 
     def encode(self):
         qq = self.seconds2bytes(self.break_starts_in, 4)
-        self.data_length= len(qq)
+        spd = b"".join([s.encode() for s in self.splice_points])
+        qq+=spd
+        spl = sum([s.data_length for s in self.splice_points])
+        self.data_length=1 + spl
         qqbase = super().encode()
         self.data = qqbase + qq
         return self.data
@@ -149,7 +156,7 @@ class ABTSignal(Signal):
         """
         decode bytes into ABTSignal vars.
         """
-        super().decode(self.data)
+        super().decode()
         self.break_stops_in = self.seconds(self.data[7:11])
 
     def encode(self):
@@ -192,10 +199,11 @@ class SpliceSignal(Signal):
         """
         unroll_descriptors decode descriptors from bites
         """
-        while data:
+        while len(data) > 7:
             descriptor, data = qqheader(data)
             descriptor.decode()
             self.descriptors.append(descriptor)
+            
 
     def roll_descriptors(self):
         """
